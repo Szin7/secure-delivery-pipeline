@@ -31,17 +31,16 @@ change and a locally running container.
 - An image is substituted or comes from an unexpected source.
 - A failed deployment replaces a healthy local application.
 
-## Planned Controls
+## Implemented Controls
 
 - Gitleaks for secret detection
 - Semgrep for selected code patterns
 - Trivy for vulnerabilities and configuration checks
 - Restricted GitHub Actions permissions
-- Image digest and attestation verification
-- Local deployment that rejects unverified candidates
+- Digest-pinned image references and scanned-image identity checks
+- Local release configuration validation against a recorded digest
 
 ## Limitations
 
 Automated scanning cannot find every vulnerability.
-Signed attestations provide origin evidence, not a
-guarantee that software is secure.
+Signed provenance attestations are not implemented in this project.
