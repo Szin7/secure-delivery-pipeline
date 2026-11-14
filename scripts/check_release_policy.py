@@ -53,6 +53,32 @@ def main():
 
     api = services["api"]
 
+    # The image defines its own non-root user and startup command.
+    # Compose must not override those or introduce privileged access.
+    forbidden = (
+        "user",
+        "entrypoint",
+        "command",
+        "network_mode",
+        "pid",
+        "ipc",
+        "secrets",
+        "configs",
+        "sysctls",
+        "healthcheck",
+    )
+
+    for setting in forbidden:
+        require(
+            api.get(setting) is None,
+            f"Release override forbidden: {setting}",
+        )
+
+    require(
+        api.get("security_opt") == ["no-new-privileges:true"],
+        "Unexpected security options",
+    )
+
     require("build" not in api, "Release must not rebuild source")
     require(api.get("image") == approved, "Image is not the approved digest")
     require(api.get("read_only") is True, "Read-only filesystem required")

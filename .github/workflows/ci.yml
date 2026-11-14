@@ -72,6 +72,66 @@ jobs:
           docker build --platform linux/amd64 \
             -t secure-delivery-pipeline:local .
 
+      - name: Smoke-test built image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          container="sdp-ci-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+
+          docker run --detach \
+            --name "$container" \
+            --init \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+            --cap-drop ALL \
+            --security-opt no-new-privileges:true \
+            --pids-limit 128 \
+            secure-delivery-pipeline:local
+
+          ready=0
+
+          for attempt in $(seq 1 20); do
+            if docker exec "$container" python -c \
+              "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)" \
+              >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+
+          if [[ "$ready" -ne 1 ]]; then
+            docker logs "$container"
+            echo "FAIL: Container did not become ready"
+            exit 1
+          fi
+
+          docker exec "$container" python -c '
+          import json
+          from urllib.request import urlopen
+
+          checks = {
+              "/health": {"status": "ok"},
+              "/version": {"version": "0.1.0"},
+          }
+
+          for path, expected in checks.items():
+              with urlopen(
+                  "http://127.0.0.1:8000" + path,
+                  timeout=3,
+              ) as response:
+                  actual = json.load(response)
+
+              if actual != expected:
+                  raise SystemExit(f"FAIL [smoke]: {path}: {actual}")
+
+              print(f"PASS [smoke]: {path}")
+          '
+
+          echo "PASS: Container smoke test completed"
+
       - name: Check image vulnerabilities
         run: ./scripts/check_image_vulns.sh
 
