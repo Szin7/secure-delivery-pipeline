@@ -116,3 +116,104 @@ jobs:
             reports/image-id.txt
           if-no-files-found: error
           retention-days: 3
+
+  publish-image:
+    name: Publish approved image
+    needs: [source-security, image-security]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Download scanned image
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: scanned-image-${{ github.sha }}
+          path: ${{ runner.temp }}/scanned-image
+
+      - name: Verify and load scanned image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          root="$RUNNER_TEMP/scanned-image"
+
+          mapfile -t archives < <(find "$root" -type f -name release-image.tar)
+          mapfile -t checksums < <(find "$root" -type f -name release-image.tar.sha256)
+          mapfile -t identities < <(find "$root" -type f -name image-id.txt)
+
+          if [[ ${#archives[@]} -ne 1 ||
+                ${#checksums[@]} -ne 1 ||
+                ${#identities[@]} -ne 1 ]]; then
+            echo "FAIL: Missing or duplicate release artifact files"
+            exit 1
+          fi
+
+          archive_dir="$(dirname "${archives[0]}")"
+          checksum_dir="$(dirname "${checksums[0]}")"
+
+          if [[ "$archive_dir" != "$checksum_dir" ]]; then
+            echo "FAIL: Archive and checksum are not together"
+            exit 1
+          fi
+
+          (
+            cd "$archive_dir"
+            sha256sum --check release-image.tar.sha256
+          )
+
+          docker load --input "${archives[0]}"
+
+          expected="$(cat "${identities[0]}")"
+          actual="$(docker image inspect secure-delivery-pipeline:local --format '{{.Id}}')"
+
+          if [[ "$expected" != "$actual" ]]; then
+            echo "FAIL: Loaded image identity does not match scanned image"
+            exit 1
+          fi
+
+          echo "PASS: Loaded image matches scanned image identity"
+
+      - name: Log in to GitHub Container Registry
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | docker login ghcr.io \
+            --username "${{ github.actor }}" --password-stdin
+
+      - name: Publish image and record digest
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          image="ghcr.io/${{ github.repository }}"
+          image="${image,,}"
+          tag="sha-${GITHUB_SHA}"
+
+          docker tag secure-delivery-pipeline:local "$image:$tag"
+          docker push "$image:$tag"
+
+          digest="$(docker buildx imagetools inspect "$image:$tag" |
+            awk '/^[[:space:]]*Digest:/ {print $2; exit}')"
+
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "FAIL: Could not verify published registry digest"
+            exit 1
+          fi
+
+          echo "$image@$digest" > "$RUNNER_TEMP/published-image-ref.txt"
+          cat "$RUNNER_TEMP/published-image-ref.txt"
+
+          echo "PASS: Published image digest verified"
+
+      - name: Upload publication record
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: release-reference-${{ github.sha }}
+          path: ${{ runner.temp }}/published-image-ref.txt
+          if-no-files-found: error
+          retention-days: 14
