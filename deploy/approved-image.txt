@@ -1,0 +1,1 @@
+ghcr.io/szin7/secure-delivery-pipeline@sha256:ed8f55a57c58ab8d830e273c312368a773642c39089a5e04538b41f04313a538

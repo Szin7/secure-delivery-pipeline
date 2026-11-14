@@ -1,0 +1,25 @@
+name: secure-delivery-pipeline-release
+
+services:
+  api:
+    image: ghcr.io/szin7/secure-delivery-pipeline@sha256:ed8f55a57c58ab8d830e273c312368a773642c39089a5e04538b41f04313a538
+
+    init: true
+
+    ports:
+      - "127.0.0.1:${SDP_RELEASE_PORT:-8767}:8000"
+
+    read_only: true
+
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    pids_limit: 128
+
+    restart: "no"
