@@ -72,3 +72,27 @@ The first GitHub Actions run completed successfully on 14 November 2026.
 - [Threat model](docs/threat-model.md)
 
 Security findings depend on the enabled rules and available advisory data. Image publication and deployment approval are separate stages of the project.
+
+## Image Publication and Release
+
+On a successful push to `main`, the pipeline publishes the
+previously scanned image to GitHub Container Registry. The
+published image is identified by its SHA-256 digest.
+
+The example release configuration in
+`deploy/compose.release.yaml` uses a fixed image digest,
+not a mutable tag or local rebuild.
+
+Validate the release configuration:
+
+    python3 scripts/check_release_policy.py
+
+The release uses localhost-only networking, a read-only
+filesystem, dropped capabilities, and a non-root user.
+
+The release was verified locally with working `/health`
+and `/version` endpoints. Deployment is currently manual.
+
+[Successful four-job CI run](https://github.com/Szin7/secure-delivery-pipeline/actions/runs/43579799966)
+
+[Rejected unsafe deployment PR](https://github.com/Szin7/secure-delivery-pipeline/pull/2)
