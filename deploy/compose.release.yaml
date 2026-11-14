@@ -9,7 +9,7 @@ services:
     ports:
       - "127.0.0.1:${SDP_RELEASE_PORT:-8767}:8000"
 
-    read_only: true
+    read_only: false
 
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m
