@@ -182,6 +182,7 @@ jobs:
     needs: [source-security, image-security, release-policy]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
+    environment: release-publication
     timeout-minutes: 20
 
     permissions:
