@@ -1,0 +1,14 @@
+rules:
+  - id: python-no-eval
+    languages:
+      - python
+    severity: HIGH
+    message: >-
+      Avoid eval(), which can execute arbitrary Python
+      expressions. Use explicit parsing and validation.
+    pattern: eval(...)
+    metadata:
+      category: security
+      confidence: HIGH
+      technology:
+        - python
