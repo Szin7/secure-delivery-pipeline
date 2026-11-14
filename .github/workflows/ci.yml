@@ -1,0 +1,98 @@
+name: Secure Delivery CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-security:
+    name: Tests and source security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out source and history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        with:
+          version: "0.12.23"
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.14
+
+      - name: Run application and policy tests
+        run: uv run --python 3.14 --locked python -m pytest -q
+
+      - name: Install Semgrep
+        run: uv tool install --python 3.14 "semgrep==1.185.0"
+
+      - name: Check for exposed secrets
+        run: ./scripts/check_secrets.sh
+
+      - name: Run static analysis
+        run: ./scripts/check_sast.sh
+
+      - name: Upload source security reports
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: source-security-reports
+          path: |
+            reports/gitleaks-history.json
+            reports/gitleaks-working-tree.json
+            reports/semgrep-sast.json
+          if-no-files-found: error
+          retention-days: 14
+
+  image-security:
+    name: Build and image security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build application image
+        run: |
+          docker build --platform linux/amd64 \
+            -t secure-delivery-pipeline:local .
+
+      - name: Check image vulnerabilities
+        run: ./scripts/check_image_vulns.sh
+
+      - name: Check Dockerfile configuration
+        run: ./scripts/check_config.sh
+
+      - name: Generate and verify SBOM
+        run: ./scripts/generate_sbom.sh
+
+      - name: Record image identity
+        run: |
+          docker image inspect secure-delivery-pipeline:local \
+            --format '{{.Id}}' > reports/image-id.txt
+
+      - name: Upload image security evidence
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: image-security-reports
+          path: |
+            reports/trivy-image-gate.json
+            reports/trivy-config-gate.json
+            reports/sbom-image.cdx.json
+            reports/image-id.txt
+          if-no-files-found: error
+          retention-days: 14
