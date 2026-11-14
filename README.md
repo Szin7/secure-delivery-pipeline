@@ -6,21 +6,18 @@ The goal is to detect problems before an application image is considered for rel
 
 ## Pipeline
 
-Code push or pull request
-    |
-    +-- Tests and source security
-    |      - Pytest
-    |      - Gitleaks
-    |      - Semgrep
-    |
-    +-- Build and image security
-           - Docker image build
-           - Trivy vulnerability scan
-           - Dockerfile configuration scan
-           - CycloneDX SBOM
-           - Security evidence artifacts
+Pull requests run three required checks:
 
-Both jobs must succeed for the workflow to pass.
+1. Tests, Gitleaks secret detection, and Semgrep static analysis.
+2. Docker image smoke test, Trivy scans, and CycloneDX SBOM validation.
+3. Release configuration policy validation.
+
+On a push to protected `main`, all three checks must pass.
+Publication then waits for manual approval in the
+`release-publication` GitHub Environment.
+
+After approval, GHCR receives the previously scanned image.
+The image is not rebuilt during publication.
 
 ## Technology
 
@@ -52,18 +49,18 @@ The commands require Docker, uv, and the configured Semgrep CLI.
 
 ## Verified Results
 
-The first GitHub Actions run completed successfully on 14 November 2026.
+The approved GitHub Actions workflow passed on 14 November 2026.
 
 | Check | Result |
 | --- | --- |
-| Automated tests | 52 passed |
+| Automated tests | 56 passed |
 | Gitleaks | No detected secrets |
-| Semgrep | 12 Python files scanned, 0 findings |
+| Semgrep | 14 Python files scanned, 0 findings |
 | Trivy image scan | Passed |
 | Dockerfile configuration scan | Passed |
 | CycloneDX SBOM | 45 components |
 
-[View successful CI run and security artifacts](https://github.com/Szin7/secure-delivery-pipeline/actions/runs/43577530636)
+[View successful CI run and security artifacts](https://github.com/Szin7/secure-delivery-pipeline/actions/runs/43583807171)
 
 ## Additional Details
 
@@ -75,8 +72,8 @@ Security findings depend on the enabled rules and available advisory data. Image
 
 ## Image Publication and Release
 
-On a successful push to `main`, the pipeline publishes the
-previously scanned image to GitHub Container Registry. The
+After security checks and manual release approval, the pipeline
+publishes the previously scanned image to GitHub Container Registry. The
 published image is identified by its SHA-256 digest.
 
 The example release configuration in

@@ -17,21 +17,29 @@ Run the tests and scanners:
     ./scripts/check_config.sh
     ./scripts/generate_sbom.sh
 
-## Verified Local Results
+## Verified Results
 
 14 November 2026
 
 | Check | Result |
 | --- | --- |
-| Automated tests | 52 passed |
+| Automated tests | 56 passed |
 | Gitleaks | No detected secrets |
-| Semgrep | No findings across 12 scanned Python files |
+| Semgrep | No findings across 14 scanned Python files |
 | Trivy image scan | 0 reported vulnerabilities |
 | Dockerfile security scan | 0 findings |
 | CycloneDX SBOM | 45 components |
 
-The test suite includes 45 security-policy tests. Controlled negative tests confirm that blocking findings, invalid reports, and scanner failures are rejected.
+The test suite includes security-policy and release-policy regression tests. Controlled negative tests confirm that blocking findings, invalid reports, and scanner failures are rejected.
 
 ## Notes
 
-Semgrep uses a project-specific rule, and vulnerability results depend on the scanner database. Generated scan reports remain local under the Git-ignored reports directory. CI workflow evidence will be added during pipeline integration.
+Semgrep uses a project-specific rule, and vulnerability results depend on the scanner database. Generated scan reports remain local under the Git-ignored reports directory. GitHub Actions evidence is available through the linked workflow runs.
+
+## CI Evidence
+
+- [Approved publication run](https://github.com/Szin7/secure-delivery-pipeline/actions/runs/43583807171)
+- [Rejected unsafe Python code](https://github.com/Szin7/secure-delivery-pipeline/pull/1)
+- [Rejected unsafe release configuration](https://github.com/Szin7/secure-delivery-pipeline/pull/2)
+
+Workflow artifacts have limited retention.
