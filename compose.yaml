@@ -1,0 +1,27 @@
+name: secure-delivery-pipeline-local
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: secure-delivery-pipeline:local
+    init: true
+
+    ports:
+      - "127.0.0.1:8765:8000"
+
+    read_only: true
+
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    pids_limit: 128
+
+    restart: "no"

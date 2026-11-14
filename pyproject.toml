@@ -1,0 +1,15 @@
+[project]
+name = "secure-delivery-pipeline"
+version = "0.1.0"
+description = "A small API for demonstrating secure software delivery"
+requires-python = ">=3.12,<3.15"
+dependencies = [
+    "fastapi>=0.162.7",
+    "uvicorn>=0.54.0",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.2.0",
+]
